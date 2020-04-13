@@ -42,6 +42,7 @@ public class System extends SettingsPreferenceFragment implements
         Preference.OnPreferenceChangeListener, Indexable {
 
     private static final String TAG = "System";
+    private static final String ACTIVE_EDGE_CATEGORY = "active_edge_category";
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -50,6 +51,16 @@ public class System extends SettingsPreferenceFragment implements
         addPreferencesFromResource(R.xml.system);
 
         ContentResolver resolver = getActivity().getContentResolver();
+
+        Preference ActiveEdge = findPreference(ACTIVE_EDGE_CATEGORY);
+        if (!getResources().getBoolean(R.bool.has_active_edge)) {
+            getPreferenceScreen().removePreference(ActiveEdge);
+        } else {
+            if (!getContext().getPackageManager().hasSystemFeature(
+                    "android.hardware.sensor.assist")) {
+                getPreferenceScreen().removePreference(ActiveEdge);
+            }
+        }
 
         boolean enableSmartPixels = getContext().getResources().
                 getBoolean(com.android.internal.R.bool.config_enableSmartPixels);
