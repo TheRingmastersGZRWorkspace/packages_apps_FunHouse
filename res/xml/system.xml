@@ -15,7 +15,9 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  -->
 
-<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+<PreferenceScreen
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:settings="http://schemas.android.com/apk/res/com.android.settings">
 
     <Preference
         android:key="audio_panel"
@@ -54,22 +56,30 @@
         android:title="@string/notification_title" />
 
     <Preference
+        android:key="aware_settings"
+        android:title="@string/aware_settings_title"
+        android:summary="@string/aware_settings_summary"
+        android:fragment="com.google.android.settings.aware.AwareSettings"
+        settings:controller="com.gzr.funhouse.fragments.MotionSensePreferenceHelper" /> 
+
+    <Preference
         android:key="active_edge_category"
         android:title="@string/active_edge_title"
         android:summary="@string/active_edge_summary"
-        android:fragment="com.gzr.funhouse.fragments.ActiveEdgeSettingsPreferenceHelper" />
+        android:fragment="com.gzr.funhouse.fragments.ActiveEdge"
+        settings:controller="com.gzr.funhouse.fragments.ActiveEdgeSettingsPreferenceHelper" />
 
     <Preference
-            android:key="smart_pixels"
-            android:title="@string/smart_pixels_title"
-            android:summary="@string/smart_pixels_summary"
-            android:fragment="com.gzr.funhouse.fragments.SmartPixels" />
+        android:key="smart_pixels"
+        android:title="@string/smart_pixels_title"
+        android:summary="@string/smart_pixels_summary"
+        android:fragment="com.gzr.funhouse.fragments.SmartPixels" />
 
     <Preference
-            android:key="aggressive_battery"
-            android:title="@string/aggressive_battery_title"
-            android:summary="@string/aggressive_battery_summary"
-            android:fragment="com.gzr.funhouse.fragments.AggressiveBattery" />
+        android:key="aggressive_battery"
+        android:title="@string/aggressive_battery_title"
+        android:summary="@string/aggressive_battery_summary"
+        android:fragment="com.gzr.funhouse.fragments.AggressiveBattery" />
 
     <com.gzr.funhouse.preference.SystemSettingListPreference
         android:key="toast_animation"

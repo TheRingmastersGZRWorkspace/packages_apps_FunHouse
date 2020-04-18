@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019 Android Open Source Illusion Project
+ * Copyright (C) 2019 The Dirty Unicorns Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,22 +29,26 @@ import androidx.preference.PreferenceScreen;
 import androidx.preference.Preference.OnPreferenceChangeListener;
 import androidx.preference.SwitchPreference;
 
-import com.android.internal.logging.nano.MetricsProto.MetricsEvent;
-
+import com.android.internal.logging.nano.MetricsProto;
 import com.android.settings.R;
 import com.android.settings.search.BaseSearchIndexProvider;
 import com.android.settings.search.Indexable;
 import com.android.settings.SettingsPreferenceFragment;
 import com.android.settings.Utils;
+import com.android.settings.widget.VideoPreference;
 
 import com.gzr.funhouse.preference.CustomSeekBarPreference;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class ActiveEdge extends SettingsPreferenceFragment implements
-        Preference.OnPreferenceChangeListener, Indexable {
+public class ActiveEdge extends SettingsPreferenceFragment
+        implements Preference.OnPreferenceChangeListener, Indexable {
 
+    private static final String KEY_SQUEEZE_VIDEO = "squeeze_video";
+    private static final String KEY_VIDEO_PAUSED = "key_video_paused";
+
+    private boolean mVideoPaused;
     private int shortSqueezeActions;
     private int longSqueezeActions;
 
@@ -52,11 +56,9 @@ public class ActiveEdge extends SettingsPreferenceFragment implements
     private ListPreference mShortSqueezeActions;
     private ListPreference mLongSqueezeActions;
     private SwitchPreference mActiveEdgeWake;
-
-    @Override
-    public int getMetricsCategory() {
-        return MetricsEvent.VALIDUS;
-    }
+    private VideoPreference mVideoPreference;
+    private Preference mShortSqueezeAppSelection;
+    private Preference mLongSqueezeAppSelection;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -64,6 +66,12 @@ public class ActiveEdge extends SettingsPreferenceFragment implements
         addPreferencesFromResource(R.xml.active_edge);
 
         final ContentResolver resolver = getActivity().getContentResolver();
+
+        if (savedInstanceState != null) {
+            mVideoPaused = savedInstanceState.getBoolean(KEY_VIDEO_PAUSED, false);
+        }
+
+        mVideoPreference = (VideoPreference) findPreference(KEY_SQUEEZE_VIDEO);
 
         shortSqueezeActions = Settings.Secure.getIntForUser(resolver,
                 Settings.Secure.SHORT_SQUEEZE_SELECTION, 0,
@@ -93,6 +101,45 @@ public class ActiveEdge extends SettingsPreferenceFragment implements
                 Settings.Secure.ASSIST_GESTURE_WAKE_ENABLED, 1,
                 UserHandle.USER_CURRENT) == 1));
         mActiveEdgeWake.setOnPreferenceChangeListener(this);
+
+        mShortSqueezeAppSelection = (Preference) findPreference("short_squeeze_app_selection");
+        boolean isAppSelection = Settings.Secure.getIntForUser(resolver,
+                Settings.Secure.SHORT_SQUEEZE_SELECTION, 0, UserHandle.USER_CURRENT) == 5/*action_app_action*/;
+        mShortSqueezeAppSelection.setEnabled(isAppSelection);
+
+        mLongSqueezeAppSelection = (Preference) findPreference("long_squeeze_app_selection");
+        isAppSelection = Settings.Secure.getIntForUser(resolver,
+                Settings.Secure.LONG_SQUEEZE_SELECTION, 0, UserHandle.USER_CURRENT) == 5/*action_app_action*/;
+        mLongSqueezeAppSelection.setEnabled(isAppSelection);
+        customAppCheck();
+    }
+
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        outState.putBoolean(KEY_VIDEO_PAUSED, mVideoPaused);
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        if (mVideoPreference != null) {
+            mVideoPaused = mVideoPreference.isVideoPaused();
+            mVideoPreference.onViewInvisible();
+        }
+        // Ensure preferences sensible to change gets updated
+        actionPreferenceReload();
+        customAppCheck();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (mVideoPreference != null) {
+            mVideoPreference.onViewVisible(mVideoPaused);
+        }
+        // Ensure preferences sensible to change get updated
+        actionPreferenceReload();
+        customAppCheck();
     }
 
     public boolean onPreferenceChange(Preference preference, Object newValue) {
@@ -104,6 +151,8 @@ public class ActiveEdge extends SettingsPreferenceFragment implements
             int index = mShortSqueezeActions.findIndexOfValue((String) newValue);
             mShortSqueezeActions.setSummary(
                     mShortSqueezeActions.getEntries()[index]);
+            mShortSqueezeAppSelection.setEnabled(shortSqueezeActions == 5);
+            customAppCheck();
             return true;
         } else if (preference == mLongSqueezeActions) {
             int longSqueezeActions = Integer.valueOf((String) newValue);
@@ -113,6 +162,8 @@ public class ActiveEdge extends SettingsPreferenceFragment implements
             int index = mLongSqueezeActions.findIndexOfValue((String) newValue);
             mLongSqueezeActions.setSummary(
                     mLongSqueezeActions.getEntries()[index]);
+            mLongSqueezeAppSelection.setEnabled(longSqueezeActions == 5);
+            customAppCheck();
             return true;
         } else if (preference == mActiveEdgeSensitivity) {
             int val = (Integer) newValue;
@@ -128,20 +179,6 @@ public class ActiveEdge extends SettingsPreferenceFragment implements
             return true;
         }
         return false;
-    }
-
-    @Override
-    public void onResume() {
-        super.onResume();
-        // Ensure preferences sensible to change get updated
-        actionPreferenceReload();
-    }
-
-    @Override
-    public void onPause() {
-        super.onPause();
-        // Ensure preferences sensible to change gets updated
-        actionPreferenceReload();
     }
 
     /* Helper for reloading both short and long gesture as they might change on
@@ -162,27 +199,44 @@ public class ActiveEdge extends SettingsPreferenceFragment implements
         mLongSqueezeActions.setValue(Integer.toString(longSqueezeActions));
         mLongSqueezeActions.setSummary(mLongSqueezeActions.getEntry());
 
+        mShortSqueezeAppSelection.setEnabled(mShortSqueezeActions.getEntryValues()
+                [shortSqueezeActions].equals("5"));
+        mLongSqueezeAppSelection.setEnabled(mLongSqueezeActions.getEntryValues()
+                [longSqueezeActions].equals("5"));
     }
 
-    /**
-     * For Search.
-     */
+    private void customAppCheck() {
+        mShortSqueezeAppSelection.setSummary(Settings.Secure.getStringForUser(getContentResolver(),
+                String.valueOf(Settings.Secure.SHORT_SQUEEZE_CUSTOM_APP_FR_NAME), UserHandle.USER_CURRENT));
+        mLongSqueezeAppSelection.setSummary(Settings.Secure.getStringForUser(getContentResolver(),
+                String.valueOf(Settings.Secure.LONG_SQUEEZE_CUSTOM_APP_FR_NAME), UserHandle.USER_CURRENT));
+    }
+
+    @Override
+    public int getMetricsCategory() {
+        return MetricsProto.MetricsEvent.VALIDUS;
+    }
+
     public static final SearchIndexProvider SEARCH_INDEX_DATA_PROVIDER =
             new BaseSearchIndexProvider() {
-                 @Override
+                @Override
                 public List<SearchIndexableResource> getXmlResourcesToIndex(Context context,
-                        boolean enabled) {
+                                                                            boolean enabled) {
                     final ArrayList<SearchIndexableResource> result = new ArrayList<>();
-                     final SearchIndexableResource sir = new SearchIndexableResource(context);
+                    final SearchIndexableResource sir = new SearchIndexableResource(context);
                     sir.xmlResId = R.xml.active_edge;
-                    result.add(sir);
+
+                    if (context.getPackageManager().hasSystemFeature(
+                            "android.hardware.sensor.assist")) {
+                        result.add(sir);
+                    }
                     return result;
                 }
-                 @Override
+
+                @Override
                 public List<String> getNonIndexableKeys(Context context) {
                     final List<String> keys = super.getNonIndexableKeys(context);
                     return keys;
                 }
-    };
+            };
 }
-

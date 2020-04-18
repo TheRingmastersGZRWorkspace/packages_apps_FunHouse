@@ -38,11 +38,14 @@ import com.android.settings.Utils;
 import com.android.settings.search.BaseSearchIndexProvider;
 import com.android.settings.search.Indexable;
 
+import androidx.preference.Preference;
+
 public class System extends SettingsPreferenceFragment implements
         Preference.OnPreferenceChangeListener, Indexable {
 
     private static final String TAG = "System";
     private static final String ACTIVE_EDGE_CATEGORY = "active_edge_category";
+    private static final String AWARE_CATEGORY = "aware_settings";
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -60,6 +63,11 @@ public class System extends SettingsPreferenceFragment implements
                     "android.hardware.sensor.assist")) {
                 getPreferenceScreen().removePreference(ActiveEdge);
             }
+        }
+
+        Preference Aware = findPreference(AWARE_CATEGORY);
+        if (!getResources().getBoolean(R.bool.has_aware)) {
+            getPreferenceScreen().removePreference(Aware);
         }
 
         boolean enableSmartPixels = getContext().getResources().
